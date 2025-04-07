@@ -13,6 +13,7 @@ import (
 	"log"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/rudrasantadip/ransumgo/wallet"
 )
@@ -21,6 +22,14 @@ type Transaction struct {
 	ID      []byte
 	Inputs  []TxInput
 	Outputs []TxOutput
+}
+
+type FileUploadTransaction struct {
+	FromAddress string
+	Filename    string
+	FileHash    string
+	FilePath    string // Optional: relative/absolute path on disk
+	Timestamp   int64
 }
 
 func (tx *Transaction) Hash() []byte {
@@ -103,6 +112,18 @@ func NewTransaction(w *wallet.Wallet, to string, amount int, UTXO *UTXOSet) *Tra
 	UTXO.Blockchain.SignTransaction(&tx, w.PrivateKey)
 
 	return &tx
+}
+
+func NewFileUploadTransaction(fromAddress string, filename string, fileData []byte, storagePath string) *FileUploadTransaction {
+	hash := sha256.Sum256(fileData)
+
+	return &FileUploadTransaction{
+		FromAddress: fromAddress,
+		Filename:    filename,
+		FileHash:    hex.EncodeToString(hash[:]),
+		FilePath:    storagePath,
+		Timestamp:   time.Now().Unix(),
+	}
 }
 
 func (tx *Transaction) IsCoinbase() bool {

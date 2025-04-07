@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blockchain File Storage</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .section {
+      margin-bottom: 30px;
+    }
+
+    input[type="text"],
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .response {
+      margin-top: 10px;
+      background: #eef3f7;
+      padding: 10px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Blockchain File Storage</h1>
+  <div class="container">
+
+    <div class="section">
+      <h2>Create Wallet</h2>
+      <button onclick="createWallet()">Create Wallet</button>
+      <div class="response" id="createWalletResponse"></div>
+    </div>
+
+    <div class="section">
+      <h2>List Addresses</h2>
+      <button onclick="listAddresses()">List Addresses</button>
+      <div class="response" id="listAddressesResponse"></div>
+    </div>
+
+    <div class="section">
+      <h2>Create Blockchain</h2>
+      <input type="text" id="cbAddress" placeholder="Address to receive genesis block" />
+      <button onclick="createBlockchain()">Create Blockchain</button>
+      <div class="response" id="createBlockchainResponse"></div>
+    </div>
+
+    <div class="section">
+      <h2>Get Balance</h2>
+      <input type="text" id="gbAddress" placeholder="Wallet address" />
+      <button onclick="getBalance()">Get Balance</button>
+      <div class="response" id="getBalanceResponse"></div>
+    </div>
+
+    <div class="section">
+      <h2>Send Coins</h2>
+      <input type="text" id="from" placeholder="From address" />
+      <input type="text" id="to" placeholder="To address" />
+      <input type="text" id="amount" placeholder="Amount" />
+      <button onclick="send()">Send</button>
+      <div class="response" id="sendResponse"></div>
+    </div>
+
+    <div class="section">
+      <h2>Upload File to Blockchain</h2>
+      <input type="file" id="fileInput" />
+      <button onclick="uploadFile()">Upload</button>
+      <div class="response" id="uploadResponse"></div>
+    </div>
+
+  </div>
+
+  <script>
+    function createWallet() {
+      fetch('/createwallet')
+        .then(res => res.text())
+        .then(data => {
+          document.getElementById('createWalletResponse').innerText = data;
+        });
+    }
+
+    function listAddresses() {
+  fetch('/listaddresses')
+    .then(res => res.json())
+    .then(addresses => {
+      const html = addresses.map((a, i) => `#${i + 1}: ${a}`).join('\n');
+      document.getElementById('listAddressesResponse').innerText = html;
+    });
+}
+
+
+    function createBlockchain() {
+      const address = document.getElementById('cbAddress').value;
+      fetch(`/createblockchain?address=${encodeURIComponent(address)}`)
+        .then(res => res.text())
+        .then(data => {
+          document.getElementById('createBlockchainResponse').innerText = data;
+        });
+    }
+
+    function getBalance() {
+      const address = document.getElementById('gbAddress').value;
+      fetch(`/getbalance?address=${encodeURIComponent(address)}`)
+        .then(res => res.text())
+        .then(data => {
+          document.getElementById('getBalanceResponse').innerText = data;
+        });
+    }
+
+    function send() {
+      const from = document.getElementById('from').value;
+      const to = document.getElementById('to').value;
+      const amount = document.getElementById('amount').value;
+      fetch(`/send?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=${encodeURIComponent(amount)}`)
+        .then(res => res.text())
+        .then(data => {
+          document.getElementById('sendResponse').innerText = data;
+        });
+    }
+
+    function uploadFile() {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) {
+        alert("Please select a file to upload.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      fetch("/uploadfile", {
+        method: "POST",
+        body: formData
+      })
+      .then(res => res.text())
+      .then(data => {
+        document.getElementById("uploadResponse").innerText = data;
+      })
+      .catch(err => {
+        document.getElementById("uploadResponse").innerText = "❌ Error: " + err;
+      });
+    }
+  </script>
+</body>
+</html>

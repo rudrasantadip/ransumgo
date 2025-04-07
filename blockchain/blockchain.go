@@ -124,6 +124,26 @@ func (chain *BlockChain) AddBlock(block *Block) {
 	Handle(err)
 }
 
+func (bc *BlockChain) AddFileBlock(tx *FileUploadTransaction) error {
+
+	newBlock := NewFileBlock(tx, bc.LastHash, bc.GetBestHeight())
+
+	err := bc.Database.Update(func(txn *badger.Txn) error {
+		// Save the new block
+		err := txn.Set(newBlock.Hash, newBlock.Serialize())
+		Handle(err)
+
+		// Update last hash
+		err = txn.Set([]byte("lh"), newBlock.Hash)
+		Handle(err)
+
+		bc.LastHash = newBlock.Hash
+		return nil
+	})
+	Handle(err)
+	return err
+}
+
 func (chain *BlockChain) GetBestHeight() int {
 	var lastBlock Block
 	err := chain.Database.View(func(txn *badger.Txn) error {
