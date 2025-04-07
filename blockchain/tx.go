@@ -25,7 +25,6 @@ type TxInput struct {
 
 func (in *TxInput) UsesKey(pubKeyHash []byte) bool {
 	lockingHash := wallet.PublicKeyHash(in.PubKey)
-
 	return bytes.Compare(lockingHash, pubKeyHash) == 0
 }
 
@@ -42,7 +41,6 @@ func (out *TxOutput) IsLockedWithKey(pubKeyHash []byte) bool {
 func NewTXOutput(value int, address string) *TxOutput {
 	txo := &TxOutput{value, nil}
 	txo.Lock([]byte(address))
-
 	return txo
 }
 

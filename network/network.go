@@ -492,3 +492,13 @@ func CloseDB(chain *blockchain.BlockChain) {
 		chain.Database.Close()
 	})
 }
+
+// export memoryPool and mineAddress
+
+func GetMemoryPool() map[string]blockchain.Transaction {
+	return memoryPool
+}
+
+func AddTxToPool(tx *blockchain.Transaction) {
+	memoryPool[hex.EncodeToString(tx.ID)] = *tx
+}

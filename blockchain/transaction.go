@@ -1,3 +1,4 @@
+// transaction.go
 package blockchain
 
 import (
@@ -24,33 +25,29 @@ type Transaction struct {
 
 func (tx *Transaction) Hash() []byte {
 	var hash [32]byte
-
 	txCopy := *tx
 	txCopy.ID = []byte{}
-
 	hash = sha256.Sum256(txCopy.Serialize())
-
 	return hash[:]
 }
 
 func (tx Transaction) Serialize() []byte {
 	var encoded bytes.Buffer
-
 	enc := gob.NewEncoder(&encoded)
 	err := enc.Encode(tx)
 	if err != nil {
 		log.Panic(err)
 	}
-
 	return encoded.Bytes()
 }
 
 func DeserializeTransaction(data []byte) Transaction {
 	var transaction Transaction
-
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 	err := decoder.Decode(&transaction)
-	Handle(err)
+	if err != nil {
+		log.Panic(err)
+	}
 	return transaction
 }
 
@@ -58,13 +55,14 @@ func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
 		randData := make([]byte, 24)
 		_, err := rand.Read(randData)
-		Handle(err)
+		if err != nil {
+			log.Panic(err)
+		}
 		data = fmt.Sprintf("%x", randData)
 	}
 
 	txin := TxInput{[]byte{}, -1, nil, []byte(data)}
 	txout := NewTXOutput(20, to)
-
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
 	tx.ID = tx.Hash()
 
@@ -84,8 +82,9 @@ func NewTransaction(w *wallet.Wallet, to string, amount int, UTXO *UTXOSet) *Tra
 
 	for txid, outs := range validOutputs {
 		txID, err := hex.DecodeString(txid)
-		Handle(err)
-
+		if err != nil {
+			log.Panic(err)
+		}
 		for _, out := range outs {
 			input := TxInput{txID, out, nil, w.PublicKey}
 			inputs = append(inputs, input)
@@ -95,7 +94,6 @@ func NewTransaction(w *wallet.Wallet, to string, amount int, UTXO *UTXOSet) *Tra
 	from := fmt.Sprintf("%s", w.Address())
 
 	outputs = append(outputs, *NewTXOutput(amount, to))
-
 	if acc > amount {
 		outputs = append(outputs, *NewTXOutput(acc-amount, from))
 	}
@@ -129,12 +127,12 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 		txCopy.Inputs[inId].Signature = nil
 		txCopy.Inputs[inId].PubKey = prevTX.Outputs[in.Out].PubKeyHash
 
-		dataToSign := fmt.Sprintf("%x\n", txCopy)
-
-		r, s, err := ecdsa.Sign(rand.Reader, &privKey, []byte(dataToSign))
-		Handle(err)
+		dataToSign := txCopy.Hash()
+		r, s, err := ecdsa.Sign(rand.Reader, &privKey, dataToSign)
+		if err != nil {
+			log.Panic(err)
+		}
 		signature := append(r.Bytes(), s.Bytes()...)
-
 		tx.Inputs[inId].Signature = signature
 		txCopy.Inputs[inId].PubKey = nil
 	}
@@ -158,10 +156,10 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 		prevTx := prevTXs[hex.EncodeToString(in.ID)]
 		txCopy.Inputs[inId].Signature = nil
 		txCopy.Inputs[inId].PubKey = prevTx.Outputs[in.Out].PubKeyHash
+		txHash := txCopy.Hash()
 
 		r := big.Int{}
 		s := big.Int{}
-
 		sigLen := len(in.Signature)
 		r.SetBytes(in.Signature[:(sigLen / 2)])
 		s.SetBytes(in.Signature[(sigLen / 2):])
@@ -172,10 +170,8 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 		x.SetBytes(in.PubKey[:(keyLen / 2)])
 		y.SetBytes(in.PubKey[(keyLen / 2):])
 
-		dataToVerify := fmt.Sprintf("%x\n", txCopy)
-
 		rawPubKey := ecdsa.PublicKey{Curve: curve, X: &x, Y: &y}
-		if ecdsa.Verify(&rawPubKey, []byte(dataToVerify), &r, &s) == false {
+		if !ecdsa.Verify(&rawPubKey, txHash, &r, &s) {
 			return false
 		}
 		txCopy.Inputs[inId].PubKey = nil
@@ -191,26 +187,24 @@ func (tx *Transaction) TrimmedCopy() Transaction {
 	for _, in := range tx.Inputs {
 		inputs = append(inputs, TxInput{in.ID, in.Out, nil, nil})
 	}
-
 	for _, out := range tx.Outputs {
 		outputs = append(outputs, TxOutput{out.Value, out.PubKeyHash})
 	}
 
 	txCopy := Transaction{tx.ID, inputs, outputs}
-
 	return txCopy
 }
 
 func (tx Transaction) String() string {
 	var lines []string
-
 	lines = append(lines, fmt.Sprintf("--- Transaction %x:", tx.ID))
+
 	for i, input := range tx.Inputs {
 		lines = append(lines, fmt.Sprintf("     Input %d:", i))
 		lines = append(lines, fmt.Sprintf("       TXID:     %x", input.ID))
-		lines = append(lines, fmt.Sprintf("       Out:       %d", input.Out))
-		lines = append(lines, fmt.Sprintf("       Signature: %x", input.Signature))
-		lines = append(lines, fmt.Sprintf("       PubKey:    %x", input.PubKey))
+		lines = append(lines, fmt.Sprintf("       Out:      %d", input.Out))
+		lines = append(lines, fmt.Sprintf("       Signature:%x", input.Signature))
+		lines = append(lines, fmt.Sprintf("       PubKey:   %x", input.PubKey))
 	}
 
 	for i, output := range tx.Outputs {
