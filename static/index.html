@@ -111,6 +111,12 @@
       <div class="response" id="uploadResponse"></div>
     </div>
 
+    <div class="section">
+      <h2>View Uploaded Files</h2>
+      <button onclick="viewFiles()">Refresh List</button>
+      <div class="response" id="filesList"></div>
+    </div>
+
   </div>
 
   <script>
@@ -183,6 +189,28 @@
         document.getElementById("uploadResponse").innerText = "❌ Error: " + err;
       });
     }
+
+    function viewFiles() {
+  fetch('/files')
+    .then(res => res.json())
+    .then(data => {
+      if (!data.files || data.files.length === 0) {
+        document.getElementById('filesList').innerText = "📂 No files found.";
+        return;
+      }
+
+      const html = data.files.map(file => {
+        const url = `/uploads/${encodeURIComponent(file)}`;
+        return `<a href="${url}" target="_blank">${file}</a>`;
+      }).join('<br>');
+
+      document.getElementById('filesList').innerHTML = html;
+    })
+    .catch(err => {
+      document.getElementById('filesList').innerText = "❌ Error: " + err;
+    });
+}
+
   </script>
 </body>
 </html>

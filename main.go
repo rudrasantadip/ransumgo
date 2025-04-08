@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -57,6 +58,25 @@ func main() {
 		commandLine.UploadFileHandler(w, r)
 	})
 
+	http.HandleFunc("/files", func(w http.ResponseWriter, r *http.Request) {
+		files, err := os.ReadDir("./uploads")
+		if err != nil {
+			http.Error(w, "Failed to read uploads directory", http.StatusInternalServerError)
+			return
+		}
+
+		var filenames []string
+		for _, file := range files {
+			if !file.IsDir() {
+				filenames = append(filenames, file.Name())
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string][]string{"files": filenames})
+	})
+
+	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 	fmt.Println("🚀 Server running at http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
