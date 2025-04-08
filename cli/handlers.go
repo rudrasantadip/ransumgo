@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,6 +14,29 @@ import (
 	"github.com/rudrasantadip/ransumgo/network"
 	"github.com/rudrasantadip/ransumgo/wallet"
 )
+
+func calculateEntropy(data []byte) float64 {
+	if len(data) == 0 {
+		return 0.0
+	}
+
+	var freq [256]int
+	for _, b := range data {
+		freq[b]++
+	}
+
+	entropy := 0.0
+	dataLen := float64(len(data))
+	for _, count := range freq {
+		if count == 0 {
+			continue
+		}
+		p := float64(count) / dataLen
+		entropy -= p * math.Log2(p)
+	}
+
+	return entropy
+}
 
 func (cli *CommandLine) CreateWalletHandler(w http.ResponseWriter, r *http.Request, nodeID string) {
 	wallets, _ := wallet.CreateWallets(nodeID)
@@ -174,6 +198,12 @@ func (cli *CommandLine) UploadFileHandler(w http.ResponseWriter, r *http.Request
 	fileData, err := io.ReadAll(file)
 	if err != nil {
 		http.Error(w, "Could not read file data", http.StatusInternalServerError)
+		return
+	}
+
+	entropy := calculateEntropy(fileData)
+	if entropy >= 7.5 {
+		http.Error(w, fmt.Sprintf("⚠️ File rejected due to high entropy (%.2f). Possible ransomware or encrypted content.", entropy), http.StatusBadRequest)
 		return
 	}
 
