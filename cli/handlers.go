@@ -202,7 +202,8 @@ func (cli *CommandLine) UploadFileHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	entropy := calculateEntropy(fileData)
-	if entropy >= 7.5 {
+	fmt.Println(entropy)
+	if entropy >= 9.5 {
 		http.Error(w, fmt.Sprintf("⚠️ File rejected due to high entropy (%.2f). Possible ransomware or encrypted content.", entropy), http.StatusBadRequest)
 		return
 	}
